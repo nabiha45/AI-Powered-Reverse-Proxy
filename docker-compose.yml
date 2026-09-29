@@ -1,4 +1,9 @@
 services:
+  upstream:
+    build: ./upstream
+    ports:
+      - "3000:3000"
+
   db:
     image: postgres:17-alpine
     environment:
