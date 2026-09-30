@@ -3,12 +3,14 @@ import { AppModule } from './app.module';
 import httpProxy from 'http-proxy';
 import type { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
+import { config } from './config';
+import { initDatabase } from './database';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.getHttpAdapter().getInstance().disable('x-powered-by');
   const proxy = httpProxy.createProxyServer({
-    target: process.env.UPSTREAM_URL ?? 'http://upstream:3000',
+    target: config.upstreamUrl,
   });
 
   const timedOutRequests = new WeakSet<object>();
@@ -28,7 +30,7 @@ async function bootstrap() {
     request.headers['x-request-id'] = requestId;
     request.headers['x-forwarded-for'] = clientIp;
     response.setHeader('X-Request-ID', requestId);
-    proxy.web(request, response, { proxyTimeout: 5000 }, () => {
+    proxy.web(request, response, { proxyTimeout: config.upstreamTimeoutMs }, () => {
       if (response.headersSent) {
         response.end();
         return;
@@ -46,6 +48,8 @@ async function bootstrap() {
     });
   });
 
-  await app.listen(process.env.PROXY_PORT ?? 8080);
+  await initDatabase();
+
+  await app.listen(config.proxyPort);
 }
 void bootstrap();
