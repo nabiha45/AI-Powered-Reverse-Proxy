@@ -2,9 +2,11 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import httpProxy from 'http-proxy';
 import type { Request, Response } from 'express';
+import { randomUUID } from 'node:crypto';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
   const proxy = httpProxy.createProxyServer({
     target: process.env.UPSTREAM_URL ?? 'http://upstream:3000',
   });
@@ -16,7 +18,16 @@ async function bootstrap() {
       timedOutRequests.add(request);
     });
   });
+  proxy.on('proxyRes', (upstreamResponse, request) => {
+    upstreamResponse.headers['x-request-id'] = request.headers['x-request-id'];
+  });
   app.use((request: Request, response: Response) => {
+    const requestId = randomUUID();
+    const clientIp = request.socket.remoteAddress ?? '';
+
+    request.headers['x-request-id'] = requestId;
+    request.headers['x-forwarded-for'] = clientIp;
+    response.setHeader('X-Request-ID', requestId);
     proxy.web(request, response, { proxyTimeout: 5000 }, () => {
       if (response.headersSent) {
         response.end();
