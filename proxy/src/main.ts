@@ -5,6 +5,9 @@ import type { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { config } from './config';
 import { initDatabase } from './database';
+import { findRule } from './rules';
+import { sendBlockedResponse } from './blocked_response';
+import { logRuleDecision } from './request_logs';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
@@ -23,29 +26,62 @@ async function bootstrap() {
   proxy.on('proxyRes', (upstreamResponse, request) => {
     upstreamResponse.headers['x-request-id'] = request.headers['x-request-id'];
   });
-  app.use((request: Request, response: Response) => {
+  app.use(async (request: Request, response: Response) => {
+    const startedAt = Date.now();
     const requestId = randomUUID();
     const clientIp = request.socket.remoteAddress ?? '';
 
     request.headers['x-request-id'] = requestId;
     request.headers['x-forwarded-for'] = clientIp;
     response.setHeader('X-Request-ID', requestId);
-    proxy.web(request, response, { proxyTimeout: config.upstreamTimeoutMs }, () => {
-      if (response.headersSent) {
-        response.end();
-        return;
-      }
 
-      const timedOut = timedOutRequests.has(request);
-      response.writeHead(timedOut ? 504 : 502, {
-        'Content-Type': 'application/json',
+    let rule;
+
+    try {
+      rule = await findRule(clientIp);
+    } catch {
+      response.status(503).json({ error: 'Rule storage unavailable' });
+      return;
+    }
+    if (rule) {
+      response.once('finish', () => {
+        void logRuleDecision(
+          request,
+          requestId,
+          clientIp,
+          rule,
+          Date.now() - startedAt,
+        ).catch((error: unknown) => {
+          console.error('Failed to log rule decision', error);
+        });
       });
-      response.end(
-        JSON.stringify({
-          error: timedOut ? 'Upstream timed out' : 'Upstream unavailable',
-        }),
-      );
-    });
+    }
+    if (rule?.decision === 'block') {
+      sendBlockedResponse(response, requestId, rule.reason);
+      return;
+    }
+
+    proxy.web(
+      request,
+      response,
+      { proxyTimeout: config.upstreamTimeoutMs },
+      () => {
+        if (response.headersSent) {
+          response.end();
+          return;
+        }
+
+        const timedOut = timedOutRequests.has(request);
+        response.writeHead(timedOut ? 504 : 502, {
+          'Content-Type': 'application/json',
+        });
+        response.end(
+          JSON.stringify({
+            error: timedOut ? 'Upstream timed out' : 'Upstream unavailable',
+          }),
+        );
+      },
+    );
   });
 
   await initDatabase();
