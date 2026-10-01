@@ -127,7 +127,6 @@ export default function Dashboard({ token, onLogout }: { token: string; onLogout
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
           <div>
             <p className="text-2xl font-bold tracking-tight text-white">Rev<span className="text-[#bd5b69]">AI</span></p>
-            <p className="text-xs text-[#a59a9c]">Security dashboard</p>
           </div>
           <button type="button" onClick={onLogout} className={quietButton}>Log out</button>
         </div>
@@ -190,7 +189,7 @@ export default function Dashboard({ token, onLogout }: { token: string; onLogout
                     <td className="max-w-48 truncate px-3 py-3" title={item.path}>{item.path}</td>
                     <td className="px-3 py-3"><span className={item.decision === 'block' ? 'text-[#ed9aa7]' : 'text-[#a8d2bb]'}>{item.decision}</span></td>
                     <td className="px-3 py-3">{item.source}</td>
-                    <td className="px-3 py-3 tabular-nums">{item.confidence === null ? '—' : `${Math.round(item.confidence * 100)}%`}</td>
+                    <td className="px-3 py-3 tabular-nums">{item.confidence === null ? '—' : `${item.confidence}`}</td>
                     <td className="px-3 py-3">{item.category ?? '—'}</td>
                     <td className="px-3 py-3 tabular-nums">{item.total_latency_ms} ms</td>
                   </tr>
