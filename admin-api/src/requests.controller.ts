@@ -6,6 +6,8 @@ import {
   Param,
   ParseUUIDPipe,
   Query,
+  Body,
+  Post,
 } from '@nestjs/common';
 import { pool } from './database';
 
@@ -83,15 +85,64 @@ export class RequestsController {
     const result = await pool.query(
       `SELECT id, created_at, ip, method, path, query_string,
             decision, source, confidence, category, reason,
-            suspicious, ai_latency_ms, total_latency_ms, summary
-     FROM request_logs
-     WHERE id = $1`,
+            suspicious, ai_latency_ms, total_latency_ms, summary,
+(SELECT json_build_object(
+   'correctedDecision', c.corrected_decision,
+   'reason', c.reason,
+   'createdAt', c.created_at
+ )
+ FROM corrections c
+ WHERE c.request_id = request_logs.id) AS correction
+FROM request_logs
+WHERE id = $1`,
       [id],
     );
 
     if (result.rows.length === 0) {
       throw new NotFoundException('Request not found');
     }
+
+    return result.rows[0];
+  }
+  @Post(':id/correction')
+  async correct(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() body: unknown,
+  ) {
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      throw new BadRequestException('JSON object required');
+    }
+
+    const reason = (body as Record<string, unknown>).reason;
+    if (typeof reason !== 'string' || !reason.trim() || reason.length > 500) {
+      throw new BadRequestException('reason must be 1 to 500 characters');
+    }
+
+    const request = await pool.query<{
+      decision: 'allow' | 'block';
+      source: string;
+    }>('SELECT decision, source FROM request_logs WHERE id = $1', [id]);
+
+    if (request.rows.length === 0) {
+      throw new NotFoundException('Request not found');
+    }
+    if (request.rows[0].source !== 'ai') {
+      throw new BadRequestException('Only AI decisions can be corrected');
+    }
+
+    const correctedDecision =
+      request.rows[0].decision === 'allow' ? 'block' : 'allow';
+
+    const result = await pool.query(
+      `INSERT INTO corrections (request_id, corrected_decision, reason)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (request_id) DO UPDATE
+     SET corrected_decision = EXCLUDED.corrected_decision,
+         reason = EXCLUDED.reason,
+         created_at = NOW()
+     RETURNING request_id, corrected_decision, reason, created_at`,
+      [id, correctedDecision, reason.trim()],
+    );
 
     return result.rows[0];
   }

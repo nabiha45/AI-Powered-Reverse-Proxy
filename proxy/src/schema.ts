@@ -1,4 +1,5 @@
 export const schemaSql = `
+
 CREATE TABLE IF NOT EXISTS request_logs (
   id UUID PRIMARY KEY,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -25,6 +26,12 @@ CREATE TABLE IF NOT EXISTS blocks (
 );
 CREATE TABLE IF NOT EXISTS allow_rules (
   ip TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS corrections (
+  request_id UUID PRIMARY KEY REFERENCES request_logs(id),
+  corrected_decision TEXT NOT NULL CHECK (corrected_decision IN ('allow', 'block')),
+  reason TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 `;
