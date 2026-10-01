@@ -22,4 +22,6 @@ export const config = {
   databaseUrl,
   aiProvider: process.env.AI_PROVIDER ?? 'mock',
   aiTimeoutMs,
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
 };

@@ -10,6 +10,10 @@ services:
       UPSTREAM_URL: http://upstream:3000
       PROXY_PORT: 8080
       DATABASE_URL: postgres://proxy:localdev@db:5432/proxy
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-2000}
     depends_on:
       upstream:
         condition: service_started
@@ -23,8 +27,10 @@ services:
       ADMIN_PORT: 9090
       ADMIN_TOKEN: ${ADMIN_TOKEN:?Set ADMIN_TOKEN in the root .env file}
       DATABASE_URL: postgres://proxy:localdev@db:5432/proxy
-      AI_PROVIDER: ${AI_PROVIDER:-mock}
       AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-2000}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
     depends_on:
       db:
         condition: service_healthy
