@@ -96,6 +96,22 @@ export default function Dashboard({ token, onLogout }: { token: string; onLogout
     }
   }
 
+  async function blockFromDetail(ip: string) {
+    setBusy(true);
+    try {
+      await apiRequest<Block>(token, '/api/blocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip }),
+      });
+      await refresh();
+    } catch (cause) {
+      reportError(cause);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function unblock(ip: string) {
     setBusy(true);
     try {
@@ -214,8 +230,14 @@ export default function Dashboard({ token, onLogout }: { token: string; onLogout
                 <h2 id="detail-title" className="text-xl font-semibold">Request detail</h2>
                 <p className="mt-1 break-all text-sm text-[#a59a9c]">{detail.id}</p>
               </div>
-              <button type="button" onClick={() => setDetail(null)} className={quietButton}>Close</button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={busy || blocks.some((block) => block.ip === detail.ip)} onClick={() => void blockFromDetail(detail.ip)} className={primaryButton}>
+                  {blocks.some((block) => block.ip === detail.ip) ? 'IP already blocked' : 'Block this IP'}
+                </button>
+                <button type="button" onClick={() => setDetail(null)} className={quietButton}>Close</button>
+              </div>
             </div>
+            <p className="mt-3 text-sm text-[#a59a9c]">IP: {detail.ip}. Blocking creates a manual block with no expiry for future requests.</p>
             <p className="mt-5 text-sm"><span className="text-[#a59a9c]">Decision:</span> {detail.decision} · {detail.source}{detail.suspicious ? ' · suspicious' : ''}</p>
             <p className="mt-3 text-sm"><span className="text-[#a59a9c]">Recorded reason:</span> {detail.reason}</p>
             <h3 className="mt-6 text-sm font-semibold">Summary sent to AI</h3>
