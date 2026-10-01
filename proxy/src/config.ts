@@ -51,4 +51,6 @@ export const config = {
   autoBlockThreshold: positiveIntegerEnv('AUTO_BLOCK_THRESHOLD', 5),
   autoBlockWindowMin: positiveIntegerEnv('AUTO_BLOCK_WINDOW_MIN', 10),
   blockDurationMin: positiveIntegerEnv('BLOCK_DURATION_MIN', 30),
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
 };

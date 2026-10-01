@@ -1,10 +1,4 @@
-import type {
-  AiProvider,
-  Classification,
-  RequestSummary,
-  ReviewInput,
-  ReviewRecommendation,
-} from './provider';
+import type { AiProvider, Classification, RequestSummary } from './provider';
 
 export class MockProvider implements AiProvider {
   async classify(summary: RequestSummary): Promise<Classification> {
@@ -88,18 +82,5 @@ export class MockProvider implements AiProvider {
       category: 'benign',
       reason: 'No mock detection pattern matched.',
     };
-  }
-
-  async review(input: ReviewInput): Promise<ReviewRecommendation> {
-    const recentBlocks = input.recentRequests.filter(
-      (request) => request.decision === 'block',
-    ).length;
-
-    return recentBlocks > 0
-      ? { recommendation: 'keep', reason: 'Recent requests were blocked.' }
-      : {
-          recommendation: 'lift',
-          reason: 'No recent blocked requests were found.',
-        };
   }
 }
