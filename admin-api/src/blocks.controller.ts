@@ -8,12 +8,14 @@ import {
   Param,
   NotFoundException,
   HttpCode,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { isIP } from 'node:net';
 import { pool } from './database';
 import { config } from './config';
 import { createReviewProvider } from './ai/create_review_provider';
-import type { ReviewInput } from './ai/review_provider';
+import { reviewWithTimeout } from './ai/review_with_timeout';
+import type { ReviewInput, ReviewRecommendation } from './ai/review_provider';
 
 const reviewProvider = createReviewProvider(config.aiProvider);
 
@@ -119,10 +121,18 @@ export class BlocksController {
       [ip],
     );
 
-    const recommendation = await reviewProvider.review({
-      ip,
-      recentRequests: history.rows,
-    });
+    let recommendation: ReviewRecommendation;
+
+    try {
+      recommendation = await reviewWithTimeout(
+        reviewProvider,
+        { ip, recentRequests: history.rows },
+        config.aiTimeoutMs,
+      );
+    } catch (error) {
+      console.error('AI review failed', error);
+      throw new ServiceUnavailableException('AI review unavailable');
+    }
 
     return {
       ip,

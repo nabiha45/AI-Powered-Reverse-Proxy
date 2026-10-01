@@ -23,6 +23,8 @@ services:
       ADMIN_PORT: 9090
       ADMIN_TOKEN: ${ADMIN_TOKEN:?Set ADMIN_TOKEN in the root .env file}
       DATABASE_URL: postgres://proxy:localdev@db:5432/proxy
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-2000}
     depends_on:
       db:
         condition: service_healthy
