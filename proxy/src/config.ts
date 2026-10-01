@@ -8,9 +8,14 @@ function numberEnv(name: string, fallback: number): number {
 
   return value;
 }
-const failMode = process.env.FAIL_MODE ?? 'open';
-if (failMode !== 'open' && failMode !== 'closed') {
-  throw new Error('FAIL_MODE must be open or closed');
+function readFailMode(): 'open' | 'closed' {
+  const value = process.env.FAIL_MODE ?? 'open';
+
+  if (value !== 'open' && value !== 'closed') {
+    throw new Error('FAIL_MODE must be open or closed');
+  }
+
+  return value;
 }
 
 const aiTimeoutMs = numberEnv('AI_TIMEOUT_MS', 2000);
@@ -35,6 +40,6 @@ export const config = {
   autoBlockWindowMin: numberEnv('AUTO_BLOCK_WINDOW_MIN', 10),
   blockDurationMin: numberEnv('BLOCK_DURATION_MIN', 30),
   aiTimeoutMs,
-  failMode,
+  failMode: readFailMode(),
   blockConfidence,
 };

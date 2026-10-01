@@ -10,10 +10,15 @@ import { sendBlockedResponse } from './blocked_response';
 import { logRuleDecision } from './request_logs';
 import { captureRequestBody } from './request_body';
 import type { Readable } from 'node:stream';
+import { createAiProvider } from './ai/create_provider';
+import { decideWithAi } from './ai/decision';
+import { buildSummary } from './ai/summary';
+import { countRecentRequests } from './request_logs';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.getHttpAdapter().getInstance().disable('x-powered-by');
+  const aiProvider = createAiProvider(config.aiProvider);
   const proxy = httpProxy.createProxyServer({
     target: config.upstreamUrl,
   });
@@ -65,11 +70,34 @@ async function bootstrap() {
     let replay: Readable | undefined;
 
     if (!rule) {
+      let preview: Buffer;
+
       try {
         const captured = await captureRequestBody(request);
+        preview = captured.preview;
         replay = captured.replay;
       } catch {
         response.status(400).json({ error: 'Could not read request body' });
+        return;
+      }
+
+      let recentCount: number;
+      try {
+        recentCount = await countRecentRequests(clientIp);
+      } catch {
+        response.status(503).json({ error: 'Request history unavailable' });
+        return;
+      }
+
+      const summary = buildSummary(request, clientIp, preview, recentCount + 1);
+      const decision = await decideWithAi(aiProvider, summary, {
+        timeoutMs: config.aiTimeoutMs,
+        failMode: config.failMode,
+        blockConfidence: config.blockConfidence,
+      });
+
+      if (decision.decision === 'block') {
+        sendBlockedResponse(response, requestId, decision.reason);
         return;
       }
     }
