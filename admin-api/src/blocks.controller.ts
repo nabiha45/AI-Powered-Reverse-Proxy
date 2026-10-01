@@ -7,9 +7,15 @@ import {
   Delete,
   Param,
   NotFoundException,
+  HttpCode,
 } from '@nestjs/common';
 import { isIP } from 'node:net';
 import { pool } from './database';
+import { config } from './config';
+import { createReviewProvider } from './ai/create_review_provider';
+import type { ReviewInput } from './ai/review_provider';
+
+const reviewProvider = createReviewProvider(config.aiProvider);
 
 @Controller('api/blocks')
 export class BlocksController {
@@ -85,5 +91,43 @@ export class BlocksController {
     }
 
     return { unblocked: true, ip };
+  }
+  @Post(':ip/review')
+  @HttpCode(200)
+  async review(@Param('ip') ip: string) {
+    if (isIP(ip) === 0) {
+      throw new BadRequestException('ip must be a valid IP address');
+    }
+
+    const block = await pool.query(
+      `SELECT 1 FROM blocks
+     WHERE ip = $1
+       AND (expires_at IS NULL OR expires_at > NOW())`,
+      [ip],
+    );
+    if (block.rows.length === 0) {
+      throw new NotFoundException('Active block not found');
+    }
+
+    const history = await pool.query<ReviewInput['recentRequests'][number]>(
+      `SELECT method, path, decision, reason
+     FROM request_logs
+     WHERE ip = $1
+       AND created_at >= NOW() - INTERVAL '10 minutes'
+     ORDER BY created_at DESC
+     LIMIT 50`,
+      [ip],
+    );
+
+    const recommendation = await reviewProvider.review({
+      ip,
+      recentRequests: history.rows,
+    });
+
+    return {
+      ip,
+      provider: config.aiProvider,
+      ...recommendation,
+    };
   }
 }

@@ -12,9 +12,9 @@ const adminToken = process.env.ADMIN_TOKEN;
 if (!adminToken?.trim()) {
   throw new Error('ADMIN_TOKEN is required');
 }
-
 export const config = {
   adminPort,
   adminToken,
   databaseUrl,
+  aiProvider: process.env.AI_PROVIDER ?? 'mock',
 };
