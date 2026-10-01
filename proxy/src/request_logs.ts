@@ -2,6 +2,16 @@ import type { Request } from 'express';
 import { pool } from './database';
 import type { RuleDecision } from './rules';
 
+export async function countRecentRequests(ip: string): Promise<number> {
+  const result = await pool.query<{ count: number }>(
+    `SELECT COUNT(*)::integer AS count
+     FROM request_logs
+     WHERE ip = $1 AND created_at >= NOW() - INTERVAL '1 minute'`,
+    [ip],
+  );
+
+  return result.rows[0].count;
+}
 export async function logRuleDecision(
   request: Request,
   requestId: string,

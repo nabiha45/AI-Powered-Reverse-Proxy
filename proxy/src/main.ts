@@ -8,6 +8,8 @@ import { initDatabase } from './database';
 import { findRule } from './rules';
 import { sendBlockedResponse } from './blocked_response';
 import { logRuleDecision } from './request_logs';
+import { captureRequestBody } from './request_body';
+import type { Readable } from 'node:stream';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
@@ -60,11 +62,22 @@ async function bootstrap() {
       sendBlockedResponse(response, requestId, rule.reason);
       return;
     }
+    let replay: Readable | undefined;
+
+    if (!rule) {
+      try {
+        const captured = await captureRequestBody(request);
+        replay = captured.replay;
+      } catch {
+        response.status(400).json({ error: 'Could not read request body' });
+        return;
+      }
+    }
 
     proxy.web(
       request,
       response,
-      { proxyTimeout: config.upstreamTimeoutMs },
+      { proxyTimeout: config.upstreamTimeoutMs, buffer: replay },
       () => {
         if (response.headersSent) {
           response.end();
