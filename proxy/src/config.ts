@@ -8,6 +8,15 @@ function numberEnv(name: string, fallback: number): number {
 
   return value;
 }
+function positiveIntegerEnv(name: string, fallback: number): number {
+  const value = numberEnv(name, fallback);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+
+  return value;
+}
 function readFailMode(): 'open' | 'closed' {
   const value = process.env.FAIL_MODE ?? 'open';
 
@@ -36,10 +45,10 @@ export const config = {
   adminPort: numberEnv('ADMIN_PORT', 9090),
   adminToken: process.env.ADMIN_TOKEN,
   aiProvider: process.env.AI_PROVIDER ?? 'mock',
-  autoBlockThreshold: numberEnv('AUTO_BLOCK_THRESHOLD', 5),
-  autoBlockWindowMin: numberEnv('AUTO_BLOCK_WINDOW_MIN', 10),
-  blockDurationMin: numberEnv('BLOCK_DURATION_MIN', 30),
   aiTimeoutMs,
   failMode: readFailMode(),
   blockConfidence,
+  autoBlockThreshold: positiveIntegerEnv('AUTO_BLOCK_THRESHOLD', 5),
+  autoBlockWindowMin: positiveIntegerEnv('AUTO_BLOCK_WINDOW_MIN', 10),
+  blockDurationMin: positiveIntegerEnv('BLOCK_DURATION_MIN', 30),
 };
