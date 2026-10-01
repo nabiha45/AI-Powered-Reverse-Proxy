@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import Dashboard from './Dashboard';
 
 function App() {
   const [enteredToken, setEnteredToken] = useState('');
@@ -38,7 +39,7 @@ function App() {
   }
 
   if (token) {
-    return <main><h1>RevAI dashboard</h1><button onClick={handleLogout}>Log out</button></main>;
+    return <Dashboard token={token} onLogout={handleLogout} />;
   }
 
   return (
