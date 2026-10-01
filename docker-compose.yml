@@ -15,6 +15,17 @@ services:
         condition: service_started
       db:
         condition: service_healthy
+  admin-api:
+    build: ./admin-api
+    ports:
+      - "9090:9090"
+    environment:
+      ADMIN_PORT: 9090
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?Set ADMIN_TOKEN in the root .env file}
+      DATABASE_URL: postgres://proxy:localdev@db:5432/proxy
+    depends_on:
+      db:
+        condition: service_healthy
 
   db:
     image: postgres:17-alpine
