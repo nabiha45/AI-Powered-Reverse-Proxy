@@ -4,6 +4,9 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
+  Param,
+  NotFoundException,
 } from '@nestjs/common';
 import { isIP } from 'node:net';
 import { pool } from './database';
@@ -65,5 +68,22 @@ export class BlocksController {
     );
 
     return result.rows[0];
+  }
+  @Delete(':ip')
+  async remove(@Param('ip') ip: string) {
+    if (isIP(ip) === 0) {
+      throw new BadRequestException('ip must be a valid IP address');
+    }
+
+    const result = await pool.query(
+      'DELETE FROM blocks WHERE ip = $1 RETURNING ip',
+      [ip],
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundException('Block not found');
+    }
+
+    return { unblocked: true, ip };
   }
 }
