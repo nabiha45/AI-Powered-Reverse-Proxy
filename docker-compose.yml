@@ -29,6 +29,14 @@ services:
       db:
         condition: service_healthy
 
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "5173:80"
+    depends_on:
+      admin-api:
+        condition: service_started
+
   db:
     image: postgres:17-alpine
     environment:
