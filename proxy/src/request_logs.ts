@@ -1,6 +1,8 @@
 import type { Request } from 'express';
 import { pool } from './database';
 import type { RuleDecision } from './rules';
+import type { AiDecision } from './ai/decision';
+import type { RequestSummary } from './ai/provider';
 
 export async function countRecentRequests(ip: string): Promise<number> {
   const result = await pool.query<{ count: number }>(
@@ -12,6 +14,7 @@ export async function countRecentRequests(ip: string): Promise<number> {
 
   return result.rows[0].count;
 }
+
 export async function logRuleDecision(
   request: Request,
   requestId: string,
@@ -39,6 +42,38 @@ export async function logRuleDecision(
       rule.source,
       rule.reason,
       totalLatencyMs,
+    ],
+  );
+}
+
+export async function logAiDecision(
+  requestId: string,
+  summary: RequestSummary,
+  decision: AiDecision,
+  totalLatencyMs: number,
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO request_logs
+      (id, ip, method, path, query_string, decision, source,
+       confidence, category, reason, suspicious, ai_latency_ms,
+       total_latency_ms, summary)
+     VALUES ($1, $2, $3, $4, $5, $6, $7,
+             $8, $9, $10, $11, $12, $13, $14)`,
+    [
+      requestId,
+      summary.clientIp,
+      summary.method,
+      summary.path,
+      summary.query ? `?${summary.query}` : '',
+      decision.decision,
+      decision.source,
+      decision.confidence,
+      decision.category,
+      decision.reason,
+      decision.suspicious,
+      decision.aiLatencyMs,
+      totalLatencyMs,
+      JSON.stringify(summary),
     ],
   );
 }

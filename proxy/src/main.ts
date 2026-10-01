@@ -14,6 +14,7 @@ import { createAiProvider } from './ai/create_provider';
 import { decideWithAi } from './ai/decision';
 import { buildSummary } from './ai/summary';
 import { countRecentRequests } from './request_logs';
+import { logAiDecision } from './request_logs';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
@@ -94,6 +95,16 @@ async function bootstrap() {
         timeoutMs: config.aiTimeoutMs,
         failMode: config.failMode,
         blockConfidence: config.blockConfidence,
+      });
+      response.once('finish', () => {
+        void logAiDecision(
+          requestId,
+          summary,
+          decision,
+          Date.now() - startedAt,
+        ).catch((error: unknown) => {
+          console.error('Failed to log AI or fallback decision', error);
+        });
       });
 
       if (decision.decision === 'block') {
