@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 55% 35% at 50% -8%, rgba(92, 18, 32, 0.3), transparent 75%),
+    linear-gradient(160deg, #0d0b0c 0%, #080808 55%, #10090b 100%);
+  color: #f2eeee;
+  font-family: 'Poppins', system-ui, sans-serif;
+}
