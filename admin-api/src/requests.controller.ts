@@ -8,6 +8,7 @@ import {
   Query,
   Body,
   Post,
+  Delete,
 } from '@nestjs/common';
 import { pool } from './database';
 
@@ -145,5 +146,20 @@ WHERE id = $1`,
     );
 
     return result.rows[0];
+  }
+  @Delete(':id/correction')
+  async undoCorrection(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    const result = await pool.query(
+      'DELETE FROM corrections WHERE request_id = $1 RETURNING request_id',
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundException('Correction not found');
+    }
+
+    return { undone: true, requestId: id };
   }
 }

@@ -11,8 +11,8 @@ export type RequestRow = {
   ip: string;
   method: string;
   path: string;
-  decision: 'allow' | 'block';
-  source: 'rule' | 'ai' | 'fallback';
+  decision: "allow" | "block";
+  source: "rule" | "ai" | "fallback";
   confidence: number | null;
   category: string | null;
   total_latency_ms: number;
@@ -31,11 +31,16 @@ export type RequestDetail = RequestRow & {
   suspicious: boolean;
   ai_latency_ms: number | null;
   summary: unknown | null;
+  correction: {
+    correctedDecision: "allow" | "block";
+    reason: string;
+    createdAt: string;
+  } | null;
 };
 
 export type Block = {
   ip: string;
-  source: 'manual' | 'auto';
+  source: "manual" | "auto";
   reason: string;
   created_at: string;
   expires_at: string | null;
@@ -44,7 +49,7 @@ export type Block = {
 export type Review = {
   ip: string;
   provider: string;
-  recommendation: 'keep' | 'lift';
+  recommendation: "keep" | "lift";
   reason: string;
 };
 
@@ -57,7 +62,11 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(token: string, path: string, init?: RequestInit): Promise<T> {
+export async function apiRequest<T>(
+  token: string,
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const response = await fetch(path, {
     ...init,
     headers: {
@@ -67,7 +76,12 @@ export async function apiRequest<T>(token: string, path: string, init?: RequestI
   });
 
   if (!response.ok) {
-    throw new ApiError(response.status === 401 ? 'Session expired. Log in again.' : `Request failed (${response.status}).`, response.status);
+    throw new ApiError(
+      response.status === 401
+        ? "Session expired. Log in again."
+        : `Request failed (${response.status}).`,
+      response.status,
+    );
   }
 
   return response.json() as Promise<T>;
