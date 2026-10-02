@@ -1,5 +1,6 @@
 import type { Classification, AiProvider, RequestSummary } from './provider';
 import { isClassification } from './validate';
+import type { CorrectionExample } from '../corrections';
 
 export type AiDecision = {
   decision: 'allow' | 'block';
@@ -40,6 +41,7 @@ export async function decideWithAi(
   provider: AiProvider,
   summary: RequestSummary,
   options: AiDecisionOptions,
+  corrections: CorrectionExample[] = [],
 ): Promise<AiDecision> {
   const startedAt = Date.now();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -47,7 +49,7 @@ export async function decideWithAi(
 
   try {
     const result: unknown = await Promise.race([
-      provider.classify(summary),
+      provider.classify(summary, corrections),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
           failureReason = 'AI timed out';

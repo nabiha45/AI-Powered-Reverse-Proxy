@@ -16,6 +16,7 @@ import { buildSummary } from './ai/summary';
 import { countRecentRequests } from './request_logs';
 import { logAiDecision } from './request_logs';
 import { createAutoBlockIfNeeded } from './auto_block';
+import { getRecentCorrections, type CorrectionExample } from './corrections';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
@@ -92,11 +93,22 @@ async function bootstrap() {
       }
 
       const summary = buildSummary(request, clientIp, preview, recentCount + 1);
-      const decision = await decideWithAi(aiProvider, summary, {
-        timeoutMs: config.aiTimeoutMs,
-        failMode: config.failMode,
-        blockConfidence: config.blockConfidence,
-      });
+      let corrections: CorrectionExample[] = [];
+      try {
+        corrections = await getRecentCorrections();
+      } catch (error) {
+        console.error('Could not load correction examples', error);
+      }
+      const decision = await decideWithAi(
+        aiProvider,
+        summary,
+        {
+          timeoutMs: config.aiTimeoutMs,
+          failMode: config.failMode,
+          blockConfidence: config.blockConfidence,
+        },
+        corrections,
+      );
       response.once('finish', async () => {
         try {
           await logAiDecision(

@@ -1,3 +1,4 @@
+import type { CorrectionExample } from '../corrections';
 export type RequestSummary = {
   method: string;
   path: string;
@@ -17,5 +18,8 @@ export type Classification = {
 };
 
 export interface AiProvider {
-  classify(summary: RequestSummary): Promise<Classification>;
+  classify(
+    summary: RequestSummary,
+    corrections: CorrectionExample[],
+  ): Promise<Classification>;
 }
