@@ -387,6 +387,11 @@ export default function Dashboard({
                       >
                         {item.decision}
                       </span>
+                      {item.suspicious && (
+                        <span className="ml-2 inline-flex rounded-full bg-[#8f1d32] px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                          Suspicious
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-3">{item.source}</td>
                     <td className="px-3 py-3 tabular-nums">

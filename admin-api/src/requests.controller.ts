@@ -61,7 +61,7 @@ export class RequestsController {
     const [requests, count] = await Promise.all([
       pool.query(
         `SELECT id, created_at, ip, method, path, decision, source,
-                confidence, category, total_latency_ms
+                confidence, category, suspicious, total_latency_ms
          FROM request_logs
          ${where}
          ORDER BY created_at DESC, id DESC

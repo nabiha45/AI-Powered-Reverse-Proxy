@@ -15,6 +15,7 @@ export type RequestRow = {
   source: "rule" | "ai" | "fallback";
   confidence: number | null;
   category: string | null;
+  suspicious: boolean;
   total_latency_ms: number;
 };
 
@@ -28,7 +29,6 @@ export type RequestPage = {
 export type RequestDetail = RequestRow & {
   query_string: string;
   reason: string;
-  suspicious: boolean;
   ai_latency_ms: number | null;
   summary: unknown | null;
   correction: {
