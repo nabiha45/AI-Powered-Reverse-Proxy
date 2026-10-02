@@ -4,30 +4,41 @@ RevAI is a small application-security gateway built for the Axiler assessment. I
 
 ## Quick start
 
-1. Install Docker with Compose, then clone this repository and open its root directory.
-2. Copy `.env.example` to `.env`. Set a nonempty `ADMIN_TOKEN`, keep `AI_PROVIDER=mock`, and leave `GEMINI_API_KEY` blank. The local `.env` is ignored by Git.
-3. Run `docker compose up --build` from the repository root. Compose starts PostgreSQL, the sample upstream, the proxy, the admin API, and the dashboard.
-4. Open `http://127.0.0.1:5173` and log in with `ADMIN_TOKEN`. Send application traffic to `http://127.0.0.1:8080`; the admin API is at `http://127.0.0.1:9090`.
+1. Install Docker with Compose, clone this repository, and open the repository root.
+2. Copy `.env.example` to `.env`. Set a nonempty `ADMIN_TOKEN` and leave `AI_PROVIDER=mock`. No AI API key is needed.
+3. Run `docker compose up --build` from the repository root.
+4. Open `http://127.0.0.1:5173` and log in with `ADMIN_TOKEN`. Send application requests to `http://127.0.0.1:8080`.
+5. Optionally, from PowerShell in the repository root, run `.\scripts\traffic.ps1` and watch the decisions appear in the dashboard.
 
-The upstream listens on port 3000 inside Compose and is not published to the host. No AI API key is needed in mock mode. To run Gemini instead, set `AI_PROVIDER=gemini` and `GEMINI_API_KEY` in your ignored `.env`, then recreate the services with `docker compose up --build`. `GEMINI_MODEL` defaults to `gemini-3.5-flash-lite`. Both the proxy classifier and admin block review use the selected provider.
+Compose also starts PostgreSQL, the admin API, and the sample upstream. The upstream's port 3000 is available inside Compose but is not published to the host. The admin API is available at `http://127.0.0.1:9090`.
 
-## Architecture and behavior
+## Architecture overview
 
-| Part | Responsibility |
-| --- | --- |
-| `proxy/` | NestJS/TypeScript HTTP gateway using `http-proxy`; applies rules and AI decisions, forwards allowed requests, and records request history. |
-| `upstream/` | Small Node.js JSON server with `/`, `/products`, `POST /login`, and `/echo` for inspecting forwarded traffic. |
-| `admin-api/` | Separate NestJS API on port 9090 with bearer-token authentication; reads logs and stats, manages blocks, and asks a provider to review active blocks. |
-| `dashboard/` | RevAI React UI served by Nginx on port 5173; calls the admin API through Nginx's `/api` route and refreshes its views every five seconds. |
-| PostgreSQL | Stores request logs, exact-IP allow rules, and manual or temporary automatic blocks. |
+RevAI has two paths: the **traffic path**, which decides whether a request reaches the protected application, and the **admin path**, which lets an operator inspect and manage those decisions.
 
-For each incoming request, the proxy generates a request ID and uses the socket IP rather than trusting a client-supplied `X-Forwarded-For`. It checks the manual allowlist first, then manual and active automatic blocks. A matching allow rule forwards immediately; a matching block returns a JSON 403. Only a request with no matching rule reaches the AI provider.
+```mermaid
+flowchart LR
+    Client[Client] --> Proxy[Security proxy]
+    Proxy -->|Allowed requests| Upstream[Sample upstream]
+    Proxy <-->|Rules, blocks, request logs| DB[(PostgreSQL)]
+    Proxy -->|Requests with no matching rule| AI[Mock or Gemini classifier]
 
-The AI summary contains the method, path, query, client IP, User-Agent, selected headers (`Content-Type`, `Accept`, and `Referer`), the first 2 KB of the body, and that IP's request count in the last minute. The provider returns a proposed allow/block decision, confidence, category, and reason. The proxy validates the result and applies its confidence threshold. A block recommendation below the threshold is allowed but marked suspicious. A timeout, provider error, or invalid result follows `FAIL_MODE` and is logged with `source=fallback`; the default is fail-open. Allowed requests are forwarded with their full body, and the decision is recorded with source `rule`, `ai`, or `fallback`.
+    Admin[Administrator] --> Dashboard[React dashboard]
+    Dashboard --> AdminAPI[Admin API]
+    AdminAPI <-->|Logs, rules, blocks, corrections| DB
+    AdminAPI -->|Block review request| AI
+```
 
-After five AI block decisions from one IP in ten minutes, an automatic block lasts 30 minutes by default. Expired blocks stop matching. An admin can create an indefinite or timed manual block and remove any block. A review checks up to 50 logged requests for the blocked IP from the last ten minutes and returns a `keep` or `lift` recommendation with a reason. Review does not change the block; the admin must accept a lift or unblock directly. The mock reviewer recommends `keep` when the recent history includes a blocked request and `lift` otherwise.
+| Component                | Role                                                                                                                                                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Security proxy**       | The public entry point for application traffic on port 8080. It checks IP rules, asks the selected AI provider when no rule matches, blocks or forwards the request, and records the decision. |
+| **Rules and PostgreSQL** | PostgreSQL stores manual allow rules, manual and temporary automatic blocks, request logs, and administrator corrections. The proxy reads rules before calling AI.                             |
+| **AI provider**          | Mock mode makes deterministic classifications without an API key; Gemini mode calls a real model. AI assists decisions but cannot override a matching manual rule.                             |
+| **Sample upstream**      | The protected application used to demonstrate forwarding. Allowed requests reach it through the proxy; blocked requests do not.                                                                |
+| **Admin API**            | A separate, token-protected service on port 9090. It reads logs and statistics, manages blocks and corrections, and requests AI recommendations for active blocks.                             |
+| **Dashboard**            | The React interface on port 5173. It calls the admin API so an administrator can inspect traffic and take action. It is separate from the client traffic path.                                 |
 
-The admin API exposes `GET /api/requests` (pagination and decision/source/IP filters), `GET /api/requests/:id`, `GET /api/blocks`, `POST /api/blocks`, `DELETE /api/blocks/:ip`, `POST /api/blocks/:ip/review`, and `GET /api/stats`. All require `Authorization: Bearer <ADMIN_TOKEN>`. The dashboard keeps the token in memory, so a page refresh requires another login. Its request detail shows the recorded reason and AI summary when one exists; stats show total requests, block rate, AI calls, and average AI latency.
+A client sends an HTTP request to the proxy. The proxy checks stored rules, consults AI only if no rule matches, and either returns a block response or forwards the full request to the upstream. It records the decision in PostgreSQL. The administrator sees those records in the dashboard and can manage blocks through the admin API. The upstream's port 3000 is internal to Docker Compose; clients use the proxy's port 8080.
 
 ## AI prompts
 
