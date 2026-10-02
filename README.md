@@ -206,7 +206,7 @@ This reduces risk but does not prove that the model will ignore every malicious 
 
 ### 4. What would change to handle 1,000 requests per second across several proxy instances?
 
-A load balancer would distribute traffic across multiple proxy instances. Rules and blocks would remain in shared storage, and automatic-block counts would need atomic updates so simultaneous requests on different instances cannot produce inconsistent results. Because each instance would see the load balancer's socket IP, the original client address would need to come through a header accepted only from that trusted load balancer—not from arbitrary clients.
+A load balancer would distribute traffic across multiple proxy instances. Rules and blocks would remain in shared storage, and automatic-block counts would need atomic updates so simultaneous requests on different instances cannot produce inconsistent results. Because each instance would see the load balancer's socket IP, the original client address would need to come through a header accepted only from that trusted load balancer, not from arbitrary clients.
 
 The current database lookups, body buffering, and AI call for every request without a matching rule would need load testing at that rate. I would limit request-body memory, reduce repeated database work, and add a controlled way to write logs without overwhelming PostgreSQL. AI calls would need concurrency limits and monitoring for latency, failures, and cost; deterministic rules would continue to avoid unnecessary AI calls. The existing timeout and fail mode would define what happens when the AI capacity is exhausted.
 
