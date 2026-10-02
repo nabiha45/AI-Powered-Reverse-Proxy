@@ -8,7 +8,7 @@ RevAI is a small application-security gateway built for the Axiler assessment. I
 2. Copy `.env.example` to `.env`. Set a nonempty `ADMIN_TOKEN` and leave `AI_PROVIDER=mock`. No AI API key is needed.
 3. Run `docker compose up --build` from the repository root.
 4. Open `http://127.0.0.1:5173` and log in with `ADMIN_TOKEN`. Send application requests to `http://127.0.0.1:8080`.
-5. Optionally, from PowerShell in the repository root, run `.\scripts\traffic.ps1` and watch the decisions appear in the dashboard.
+5. Optionally, run the [tests](#tests-and-demo-traffic) first. Then, from PowerShell in the repository root, run `.\scripts\traffic.ps1` and watch the decisions appear in the dashboard. The traffic script can trigger a temporary block for your local IP, which may affect the integration test if it is run afterward.
 
 Compose also starts PostgreSQL, the admin API, and the sample upstream. The upstream's port 3000 is available inside Compose but is not published to the host. The admin API is available at `http://127.0.0.1:9090`.
 
