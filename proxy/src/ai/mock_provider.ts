@@ -15,7 +15,8 @@ export class MockProvider implements AiProvider {
     if (
       content.includes('union select') ||
       content.includes('drop table') ||
-      content.includes('information_schema')
+      content.includes('information_schema') ||
+      content.includes("' or '1'='1")
     ) {
       return {
         decision: 'block',
